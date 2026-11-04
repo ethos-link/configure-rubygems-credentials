@@ -48226,13 +48226,13 @@ async function assumeRole(roleToAssume, audience, server) {
 
 
 
-async function exchangeToken(audience, server) {
+async function exchangeToken(audience, server, owner) {
     const webIdentityToken = await getIDToken(audience);
     if (!webIdentityToken)
         throw new Error(`Unable to get ID Token for audience ${audience}`);
     const http = new HttpClient('rubygems-oidc-action');
     const url = `${server}/api/v1/oidc/trusted_publisher/exchange_token`;
-    const res = await http.postJson(url, { jwt: webIdentityToken }, {
+    const res = await http.postJson(url, { jwt: webIdentityToken, ...(owner ? { owner } : {}) }, {
         'content-type': 'application/json',
         accept: 'application/json'
     });
@@ -48252,6 +48252,7 @@ async function run() {
         const audience = getInput('audience');
         const roleToAssume = getInput('role-to-assume');
         const apiToken = getInput('api-token');
+        const owner = getInput('owner');
         const trustedPublisher = (() => {
             const trustedPublisherConfigured = !!getInput('trusted-publisher');
             if (!trustedPublisherConfigured && !apiToken && !roleToAssume) {
@@ -48274,6 +48275,8 @@ async function run() {
                 throw new Error('Cannot specify role-to-assume when using api-token');
             if (trustedPublisher)
                 throw new Error('Cannot specify trusted-publisher when using api-token');
+            if (owner)
+                throw new Error('Cannot specify owner when using api-token');
             await configureApiToken(apiToken, gemServer);
         }
         else if (roleToAssume) {
@@ -48281,13 +48284,15 @@ async function run() {
                 throw new Error('Missing audience input');
             if (trustedPublisher)
                 throw new Error('Cannot specify trusted-publisher when using role-to-assume');
+            if (owner)
+                throw new Error('Cannot specify owner when using role-to-assume');
             const oidcIdToken = await assumeRole(roleToAssume, audience, gemServer);
             await configureApiToken(oidcIdToken.rubygemsApiKey, gemServer);
         }
         else if (trustedPublisher) {
             if (!audience)
                 throw new Error('Missing audience input');
-            const oidcIdToken = await exchangeToken(audience, gemServer);
+            const oidcIdToken = await exchangeToken(audience, gemServer, owner);
             await configureApiToken(oidcIdToken.rubygemsApiKey, gemServer);
         }
         else {

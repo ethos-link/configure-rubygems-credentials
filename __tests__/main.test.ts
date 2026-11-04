@@ -152,6 +152,28 @@ describe('exchangeToken', () => {
     })
   })
 
+  test.each(['27209', 'gem-owner'])('asserts owner %s', async owner => {
+    jest.mocked(core.getIDToken).mockResolvedValue('ID_TOKEN')
+
+    const request = nock('https://rubygems.org')
+      .post('/api/v1/oidc/trusted_publisher/exchange_token', {
+        jwt: 'ID_TOKEN',
+        owner
+      })
+      .reply(201, {
+        name: 'role name',
+        rubygems_api_key: 'API_KEY',
+        expires_at: '2021-01-01T00:00:00Z',
+        scopes: ['push_rubygem']
+      })
+
+    await expect(
+      exchangeToken('rubygems.org', 'https://rubygems.org', owner)
+    ).resolves.toHaveProperty('rubygemsApiKey', 'API_KEY')
+    expect(request.isDone()).toBe(true)
+    expect(core.getIDToken).toHaveBeenCalledWith('rubygems.org')
+  })
+
   test('handles a 404', async () => {
     jest.mocked(core.getIDToken).mockResolvedValue('ID_TOKEN')
 
