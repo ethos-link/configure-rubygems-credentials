@@ -6,6 +6,38 @@
 
 ## Configure RubyGems Credentials for GitHub Actions
 
+This Ethos Link fork adds the optional `owner` input required for the first
+publication of a new gem. It retains the upstream credential handling and also
+works for subsequent releases of existing gems.
+
+Use this pinned configuration as the baseline for either case:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure RubyGems credentials
+        uses: ethos-link/configure-rubygems-credentials@9b2cf2e75bb26157e8b9909ce82f2736929cc571
+        with:
+          owner: "12345"
+```
+
+Replace the owner with the immutable numeric account ID shown on RubyGems.org.
+The ID is public configuration, not a secret. New gems also need an unexpired
+pending trusted publisher matching the calling repository, workflow and any
+configured environment. Existing gems need their trusted publisher configured.
+Configuring credentials does not publish a gem; run your build and `gem push`
+steps separately. This action stays in the caller's release workflow, so changing
+the credentials action does not require changing the publisher's workflow name.
+
+The remaining examples document the original upstream action. Its current
+release does not yet support `owner`; use the pinned fork above when supplying it.
+
 Configure your RubyGems credentials and for use in other
 GitHub Actions. This action implements OIDC support, writes gem credentials files,
 and exports environment variables used by both `rubygems` and
@@ -51,8 +83,21 @@ Configure a trusted publisher for your gem on RubyGems.org, then use:
   uses: rubygems/configure-rubygems-credentials@main
 ```
 
-No additional inputs are required. The action will automatically use OIDC to authenticate
-with RubyGems.org as a trusted publisher.
+The action automatically uses OIDC to authenticate with RubyGems.org. For a new
+gem, configure a pending trusted publisher and declare the account that will own
+it using the `owner` input. Use the immutable account ID shown on your pending
+trusted publishers page:
+
+```yaml
+- name: Configure RubyGems Credentials
+  uses: ethos-link/configure-rubygems-credentials@9b2cf2e75bb26157e8b9909ce82f2736929cc571
+  with:
+    owner: "12345"
+```
+
+The same configuration works for subsequent releases. Existing gems can continue
+to omit `owner`. Handles are also accepted, but numeric IDs remain stable if an
+account changes its handle.
 
 ### OIDC API Key Role
 

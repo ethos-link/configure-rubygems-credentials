@@ -9,6 +9,7 @@ async function run(): Promise<void> {
     const audience = core.getInput('audience')
     const roleToAssume = core.getInput('role-to-assume')
     const apiToken = core.getInput('api-token')
+    const owner = core.getInput('owner')
     const trustedPublisher: boolean = (() => {
       const trustedPublisherConfigured = !!core.getInput('trusted-publisher')
       if (!trustedPublisherConfigured && !apiToken && !roleToAssume) {
@@ -31,6 +32,8 @@ async function run(): Promise<void> {
       if (trustedPublisher)
         throw new Error('Cannot specify trusted-publisher when using api-token')
 
+      if (owner) throw new Error('Cannot specify owner when using api-token')
+
       await configureApiToken(apiToken, gemServer)
     } else if (roleToAssume) {
       if (!audience) throw new Error('Missing audience input')
@@ -39,12 +42,15 @@ async function run(): Promise<void> {
           'Cannot specify trusted-publisher when using role-to-assume'
         )
 
+      if (owner)
+        throw new Error('Cannot specify owner when using role-to-assume')
+
       const oidcIdToken = await assumeRole(roleToAssume, audience, gemServer)
       await configureApiToken(oidcIdToken.rubygemsApiKey, gemServer)
     } else if (trustedPublisher) {
       if (!audience) throw new Error('Missing audience input')
 
-      const oidcIdToken = await exchangeToken(audience, gemServer)
+      const oidcIdToken = await exchangeToken(audience, gemServer, owner)
       await configureApiToken(oidcIdToken.rubygemsApiKey, gemServer)
     } else {
       throw new Error('Missing api-token or role-to-assume input')
